@@ -41,7 +41,7 @@
 
 // 기본 이동용 파라미터 //////////////////////////////////////////////
 
-#define TURN_90_STEP 14   //90도 회전 스텝
+#define TURN_90_STEP 12   //90도 회전 스텝
 #define ONECELL_STEP 3  //기본 이동 거리
 
 #define DEFAULT_SPEED 210
@@ -68,8 +68,8 @@ int LeftMotorStepCounter;
 int RightMotorStepCounter;
 
 //거리 계산을 위한 모터 회전 카운터
-int LeftMotorDistanceStepCounter;
-int RightMotorDistanceStepCounter;
+int LeftMotorDistanceStepCounter =0;
+int RightMotorDistanceStepCounter=0;
 
 
 //모터 On Off 설정
@@ -146,7 +146,6 @@ void GoForward() {
 	//LeftMotorStepTarget = RightMotorStepTarget = ONECELL_STEP;
 	LeftMotor(1, LeftSpeed);
 	RightMotor(1, RightSpeed);
-	IsTurning = 0;
 }
 
 void LeftTurn() {
@@ -157,7 +156,9 @@ void LeftTurn() {
 	LeftMotor(0, LeftSpeed);
 	RightMotor(1, RightSpeed);
 	IsMotor90Turn = LEFT | RIGHT;
-	IsTurning = 1;
+
+	LeftMotorDistanceStepCounter = 0;
+	RightMotorDistanceStepCounter = 0;
 }
 
 
@@ -169,7 +170,9 @@ void RightTurn() {
 	LeftMotor(1, LeftSpeed);
 	RightMotor(0, RightSpeed);
 	IsMotor90Turn = LEFT | RIGHT;
-	IsTurning = 1;
+
+	LeftMotorDistanceStepCounter = 0;
+	RightMotorDistanceStepCounter = 0;
 }
 
 void StopMotor() {
@@ -196,8 +199,10 @@ void PrintDataToOLED() {
 		u8g.setPrintPos(0, SMALL_LINE + LARGE_LINE * 2); u8g.print("Sp L "); u8g.print(LeftSpeed, DEC);
 		u8g.print(" R "); u8g.println(RightSpeed, DEC);
 
-		u8g.setPrintPos(0, SMALL_LINE + LARGE_LINE * 3); u8g.print("St L "); u8g.print(LeftMotorStepCounter, DEC);
-		u8g.print(" R "); u8g.println(RightMotorStepCounter, DEC);
+		u8g.setPrintPos(0, SMALL_LINE + LARGE_LINE * 3); u8g.print("St L "); u8g.print(LeftMotorDistanceStepCounter, DEC);
+		u8g.print(" R "); u8g.println(RightMotorDistanceStepCounter, DEC);
+
+		u8g.setPrintPos(80, SMALL_LINE + LARGE_LINE * 3 + 3); u8g.println(IsMotor90Turn, DEC);
 	} while (u8g.nextPage());
 }
 
@@ -377,10 +382,12 @@ void loop() {
 			Serial.println("FrontWall detected");
 
 			if (Distance[LEFT] < Distance[RIGHT]) {   //왼쪽에 벽이 없으면
+				delay(500);
 				LeftTurn();
 			}
 			else {
 				//Serial.println("right");
+				delay(500);
 				RightTurn();
 			}
 		}
@@ -398,7 +405,7 @@ ISR(PCINT0_vect)
 
 	if (LeftTemp != LeftMotorEncoder) {
 		LeftMotorStepCounter++;
-		if (IsTurning == 0) LeftMotorDistanceStepCounter++;
+		if (IsMotor90Turn == 0) LeftMotorDistanceStepCounter++;
 		LeftMotorEncoder = LeftTemp;
 		if (IsMotor90Turn & LEFT) {
 			if (LeftMotorStepTarget < LeftMotorStepCounter) {
@@ -410,7 +417,7 @@ ISR(PCINT0_vect)
 
 	if (RightTemp != RightMotorEncoder) {
 		RightMotorStepCounter++;
-		if (IsTurning == 0) RightMotorDistanceStepCounter++;
+		if (IsMotor90Turn == 0) RightMotorDistanceStepCounter++;
 		RightMotorEncoder = RightTemp;
 		if (IsMotor90Turn & RIGHT) {
 			if (RightMotorStepTarget < RightMotorStepCounter) {
@@ -418,6 +425,10 @@ ISR(PCINT0_vect)
 				IsMotor90Turn &= ~RIGHT;
 			}
 		}
+	}
+
+	if (LeftMotorDistanceStepCounter + RightMotorDistanceStepCounter > 30) {
+		delay(1000);
 	}
 }
 
