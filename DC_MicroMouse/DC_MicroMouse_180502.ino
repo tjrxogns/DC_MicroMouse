@@ -44,8 +44,6 @@
 
 #define VOLTAGE_MONITOR A3
 
-int KeyPushed;
-
 // 기본 이동용 파라미터 //////////////////////////////////////////////
 
 #define TURN_90_STEP 12   //90도 회전 스텝
@@ -60,12 +58,6 @@ int LeftSpeed = DEFAULT_SPEED;
 int RightSpeed = DEFAULT_SPEED;
 
 unsigned long LeftMotorTimer, RightMotorTimer, systemTimer;
-
-#define STOP 0
-#define STRAIGHT 1
-#define TURN 2
-
-int state;
 
 //int a, b, c, d;
 //엔코더 값 변경 저장
@@ -148,6 +140,7 @@ void LeftMotor(bool dir, int vel) {
 	//digitalWrite(LEFT_MOTOR_PWM, !dir & 0x01);
 	analogWrite(LEFT_MOTOR_PWM, (dir) ? 255 - vel : vel);
 }
+
 void RightMotor(bool dir, int vel) {
 	if (MotorAllOn == 0) return;
 	digitalWrite(RIGHT_MOTOR_DIR, dir);
@@ -301,43 +294,25 @@ void setup() {
 	SetupOLED();
 
 	noInterrupts();
-	PCICR |= (1 << PCIE0 | 1 << PCIE1);
-	PCMSK0 |= (1 << PCINT1 | 1 << PCINT2 | 1 << PCINT3 | 1 << PCINT4 | 1 << PCINT4);  //모터 엔코더 
-	PCMSK1 |= (1 << PCINT13);  //스위치 
-
+	PCICR |= (1 << PCIE0);
+	PCMSK0 |= (1 << PCINT1 | 1 << PCINT2 | 1 << PCINT3 | 1 << PCINT4);  //모터 엔코더 
 	interrupts();
 	
-	while (KeyPushed == 0) {
+	while (digitalRead(13) == 0) {
 		Sensor();
 	}   //스위치가 눌릴때까지 대기 
 	MotorAllOn = 1;
 	systemTimer = millis();
 
 	RobotPos.x = 0; RobotPos.y = 0;
-	state = STOP;
-	KeyPushed = 0;
 }
 
 void loop() {
-	if (KeyPushed == 1) {
-		delay(500);
-		KeyPushed = 0;
-		if (state !=  0) {
-			state = 0;
-		}
-		else {
-			state = 1;
-		}
-		
-	}	
 	Sensor();
+	//if (digitalRead(13) == 1) while (1);   //스위치가 눌리면 정지
 
-	switch (state) {
-	case STOP:
-		StopMotor();
-		break;
-
-	case STRAIGHT:
+	if (IsMotor90Turn == 0) {
+		//if( FALSE == CheckWall(FRONT,0,5)) {  //3cm 이내에 벽이 없으면
 		if (Distance[FRONT] < FRONT_WALL_DETECTION) {
 			CalibrationDirection = 0;
 			CalibrationValue = 0;
@@ -410,7 +385,6 @@ void loop() {
 
 			StopMotor();
 			delay(500);
-			state = TURN;
 			if (Distance[LEFT] < Distance[RIGHT]) {   //왼쪽에 벽이 없으면
 				LeftTurn();
 			}
@@ -419,18 +393,6 @@ void loop() {
 				RightTurn();
 			}
 		}
-		break;
-	case TURN:
-		if (IsMotor90Turn == 0) {
-			state = STRAIGHT;
-		}
-		break;
-	}
-}
-
-ISR(PCINT1_vect) {
-	if (digitalRead(13) == 1 && KeyPushed == 0) {
-		KeyPushed = 1;
 	}
 }
 

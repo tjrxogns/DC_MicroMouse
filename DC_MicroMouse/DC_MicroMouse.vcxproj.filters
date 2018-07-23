@@ -17,5 +17,9 @@
   <ItemGroup>
     <None Include="DC_MicroMouse.ino" />
   </ItemGroup>
- 
+  <ItemGroup>
+    <ClInclude Include="__vm\.DC_MicroMouse.vsarduino.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+  </ItemGroup>
 </Project>
